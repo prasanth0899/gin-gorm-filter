@@ -97,13 +97,33 @@ func filterField(field reflect.StructField, phrase string) clause.Expression {
 	} else {
 		paramName = columnName
 	}
-	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v:(\w{1,}).*`, paramName))
+	re, err := regexp.Compile(fmt.Sprintf(`(?m)%v(\[([^:]*)\])?:([a-zA-Z0-9,\-+_=\*$]*).*`, paramName))
 	if err != nil {
 		return nil
 	}
 	filterSubPhraseMatch := re.FindStringSubmatch(phrase)
-	if len(filterSubPhraseMatch) == 2 {
-		return clause.Eq{Column: columnName, Value: filterSubPhraseMatch[1]}
+	if len(filterSubPhraseMatch) != 4 {
+		return nil
+	}
+	switch filterSubPhraseMatch[2] {
+	case "e", "":
+		values := strings.Split(filterSubPhraseMatch[3], ",")
+		return clause.Eq{Column: columnName, Value: values}
+	case "gt":
+		value := filterSubPhraseMatch[3]
+		return clause.Gt{Column: columnName, Value: value}
+	case "lt":
+		value := filterSubPhraseMatch[3]
+		return clause.Lt{Column: columnName, Value: value}
+	case "lte":
+		value := filterSubPhraseMatch[3]
+		return clause.Lte{Column: columnName, Value: value}
+	case "gte":
+		value := filterSubPhraseMatch[3]
+		return clause.Gte{Column: columnName, Value: value}
+	case "ne":
+		values := strings.Split(filterSubPhraseMatch[3], ",")
+		return clause.Neq{Column: columnName, Value: values}
 	}
 	return nil
 }
